@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}고객 상세 - {{ customer.name }} - 해피콜 시스템{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('freelancer_dashboard') }}" class="text-indigo-600 hover:text-indigo-800">
+        <i class="fas fa-arrow-left mr-1"></i>목록으로 돌아가기
+    </a>
+</div>
+
+<div class="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div class="bg-indigo-600 text-white p-4">
+        <h1 class="text-xl font-bold">
+            <i class="fas fa-user mr-2"></i>{{ customer.name }} 님
+        </h1>
+        <p class="text-indigo-200">{{ customer.phone }}</p>
+    </div>
+    
+    {% if submission %}
+    <div class="p-6">
+        <div class="bg-gray-100 rounded-lg p-4 mb-4">
+            <h3 class="font-semibold text-gray-700 mb-2">
+                <i class="fas fa-check-circle mr-2 text-green-500"></i>이미 제출된 건입니다
+            </h3>
+            <p class="text-sm text-gray-600">
+                제출일시: {{ submission.created_at.strftime('%Y-%m-%d %H:%M') }}
+            </p>
+            <p class="text-sm">
+                최종 결과: 
+                <span class="{% if submission.final_status == '정상' %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                    {{ submission.final_status }}
+                </span>
+            </p>
+        </div>
+    </div>
+    {% else %}
+    <div class="p-6">
+        <div class="space-y-6">
+            <div class="border-b pb-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                    <span class="bg-indigo-600 text-white px-2 py-1 rounded mr-2 text-sm">1단계</span>
+                    서류 정보 확인
+                </h2>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-500">고객명:</span>
+                            <span class="font-medium ml-2">{{ customer.name }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">연락처:</span>
+                            <span class="font-medium ml-2">{{ customer.phone }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">서류상태:</span>
+                            <span class="font-medium ml-2 text-green-600">{{ customer.document_status }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">접수일:</span>
+                            <span class="font-medium ml-2">{{ customer.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-b pb-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                    <span class="bg-indigo-600 text-white px-2 py-1 rounded mr-2 text-sm">2단계</span>
+                    해피콜 스크립트
+                </h2>
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-700 space-y-2">
+                        <p><strong>"안녕하세요, {{ customer.name }}님. 저는 OO통신에서 연락드리는 해피콜 담당자입니다."</strong></p>
+                        <p>"최근 가입하신 서비스 관련하여 몇 가지 안내 사항을 확인드리기 위해 연락드렸습니다."</p>
+                        <hr class="my-2">
+                        <p class="text-indigo-600 font-medium">확인 사항:</p>
+                        <ol class="list-decimal list-inside space-y-1 text-gray-600">
+                            <li>할부금 안내가 정확하게 전달되었는지 확인</li>
+                            <li>위약금 조건에 대해 안내 받으셨는지 확인</li>
+                            <li>가입하신 요금제 내용 확인</li>
+                            <li>의무 유지기간 안내 확인</li>
+                            <li>월 요금에 대한 안내 확인</li>
+                            <li>중고폰 반납 관련 안내 확인 (해당 시)</li>
+                        </ol>
+                        <hr class="my-2">
+                        <p><strong>"감사합니다. 좋은 하루 되세요!"</strong></p>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="POST" action="{{ url_for('submit_checklist', customer_id=customer.id) }}" enctype="multipart/form-data">
+                <div class="border-b pb-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                        <span class="bg-indigo-600 text-white px-2 py-1 rounded mr-2 text-sm">3단계</span>
+                        녹취 파일 업로드
+                    </h2>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <input type="file" name="recording" accept=".mp3,.wav,.m4a,.ogg"
+                            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <p class="text-xs text-gray-500 mt-2">지원 형식: MP3, WAV, M4A, OGG (최대 16MB)</p>
+                    </div>
+                </div>
+                
+                <div class="pb-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                        <span class="bg-indigo-600 text-white px-2 py-1 rounded mr-2 text-sm">4단계</span>
+                        QC 체크리스트
+                    </h2>
+                    <p class="text-sm text-gray-600 mb-4">각 항목에 대해 정상 여부를 체크해주세요. 하나라도 비정상이면 전체가 비정상으로 처리됩니다.</p>
+                    
+                    <div class="space-y-3">
+                        <div class="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
+                            <span class="font-medium text-gray-700">
+                                <i class="fas fa-credit-card mr-2 text-indigo-500"></i>1. 할부금 안내
+                            </span>
+                            <div class="flex gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_installment" value="normal" class="hidden peer" checked>
+                                    <span class="peer-checked:bg-green-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-check mr-1"></i>정상
+                                    </span>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_installment" value="abnormal" class="hidden peer">
+                                    <span class="peer-checked:bg-red-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-times mr-1"></i>비정상
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
+                            <span class="font-medium text-gray-700">
+                                <i class="fas fa-exclamation-triangle mr-2 text-indigo-500"></i>2. 위약금 안내
+                            </span>
+                            <div class="flex gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_penalty" value="normal" class="hidden peer" checked>
+                                    <span class="peer-checked:bg-green-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-check mr-1"></i>정상
+                                    </span>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_penalty" value="abnormal" class="hidden peer">
+                                    <span class="peer-checked:bg-red-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-times mr-1"></i>비정상
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
+                            <span class="font-medium text-gray-700">
+                                <i class="fas fa-mobile-alt mr-2 text-indigo-500"></i>3. 요금제 안내
+                            </span>
+                            <div class="flex gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_rate_plan" value="normal" class="hidden peer" checked>
+                                    <span class="peer-checked:bg-green-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-check mr-1"></i>정상
+                                    </span>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_rate_plan" value="abnormal" class="hidden peer">
+                                    <span class="peer-checked:bg-red-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-times mr-1"></i>비정상
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
+                            <span class="font-medium text-gray-700">
+                                <i class="fas fa-calendar-alt mr-2 text-indigo-500"></i>4. 유지기간 안내
+                            </span>
+                            <div class="flex gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_retention" value="normal" class="hidden peer" checked>
+                                    <span class="peer-checked:bg-green-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-check mr-1"></i>정상
+                                    </span>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_retention" value="abnormal" class="hidden peer">
+                                    <span class="peer-checked:bg-red-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-times mr-1"></i>비정상
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
+                            <span class="font-medium text-gray-700">
+                                <i class="fas fa-won-sign mr-2 text-indigo-500"></i>5. 요금 안내
+                            </span>
+                            <div class="flex gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_monthly_fee" value="normal" class="hidden peer" checked>
+                                    <span class="peer-checked:bg-green-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-check mr-1"></i>정상
+                                    </span>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_monthly_fee" value="abnormal" class="hidden peer">
+                                    <span class="peer-checked:bg-red-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-times mr-1"></i>비정상
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
+                            <span class="font-medium text-gray-700">
+                                <i class="fas fa-recycle mr-2 text-indigo-500"></i>6. 중고폰 반납 안내
+                            </span>
+                            <div class="flex gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_used_phone" value="normal" class="hidden peer" checked>
+                                    <span class="peer-checked:bg-green-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-check mr-1"></i>정상
+                                    </span>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="check_used_phone" value="abnormal" class="hidden peer">
+                                    <span class="peer-checked:bg-red-500 peer-checked:text-white bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        <i class="fas fa-times mr-1"></i>비정상
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+                    <i class="fas fa-paper-plane mr-2"></i>체크리스트 제출
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

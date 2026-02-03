@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}제출 상세 - 해피콜 시스템{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin_dashboard') }}" class="text-indigo-600 hover:text-indigo-800">
+        <i class="fas fa-arrow-left mr-1"></i>목록으로 돌아가기
+    </a>
+</div>
+
+<div class="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div class="bg-indigo-600 text-white p-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold">
+                <i class="fas fa-file-alt mr-2"></i>{{ submission.customer.name }} 님 - 제출 상세
+            </h1>
+            <p class="text-indigo-200">{{ submission.customer.phone }}</p>
+        </div>
+        <div class="flex gap-2">
+            <span class="{% if submission.final_status == '정상' %}bg-green-500{% else %}bg-red-500{% endif %} px-3 py-1 rounded-full text-sm font-medium">
+                {{ submission.final_status }}
+            </span>
+            <span class="{% if submission.admin_status == '처리완료' %}bg-blue-500{% else %}bg-yellow-500{% endif %} px-3 py-1 rounded-full text-sm font-medium">
+                {{ submission.admin_status }}
+            </span>
+        </div>
+    </div>
+    
+    <div class="p-6">
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                <i class="fas fa-info-circle mr-2 text-indigo-500"></i>기본 정보
+            </h2>
+            <div class="bg-gray-50 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                    <span class="text-gray-500">제출일시:</span>
+                    <p class="font-medium">{{ submission.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div>
+                    <span class="text-gray-500">담당자:</span>
+                    <p class="font-medium">{{ submission.agent.username }}</p>
+                </div>
+                <div>
+                    <span class="text-gray-500">녹취파일:</span>
+                    <p class="font-medium">
+                        {% if submission.recording_file %}
+                        <i class="fas fa-file-audio text-green-500 mr-1"></i>{{ submission.recording_file }}
+                        {% else %}
+                        <span class="text-gray-400">없음</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <span class="text-gray-500">최종결과:</span>
+                    <p class="font-semibold {% if submission.final_status == '정상' %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ submission.final_status }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                <i class="fas fa-clipboard-check mr-2 text-indigo-500"></i>QC 체크리스트 결과
+            </h2>
+            <div class="space-y-2">
+                <div class="flex justify-between items-center p-3 rounded-lg {% if submission.check_installment %}bg-green-50{% else %}bg-red-50{% endif %}">
+                    <span class="font-medium">
+                        <i class="fas fa-credit-card mr-2"></i>1. 할부금 안내
+                    </span>
+                    <span class="{% if submission.check_installment %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                        {% if submission.check_installment %}
+                        <i class="fas fa-check-circle mr-1"></i>정상
+                        {% else %}
+                        <i class="fas fa-times-circle mr-1"></i>비정상
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex justify-between items-center p-3 rounded-lg {% if submission.check_penalty %}bg-green-50{% else %}bg-red-50{% endif %}">
+                    <span class="font-medium">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>2. 위약금 안내
+                    </span>
+                    <span class="{% if submission.check_penalty %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                        {% if submission.check_penalty %}
+                        <i class="fas fa-check-circle mr-1"></i>정상
+                        {% else %}
+                        <i class="fas fa-times-circle mr-1"></i>비정상
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex justify-between items-center p-3 rounded-lg {% if submission.check_rate_plan %}bg-green-50{% else %}bg-red-50{% endif %}">
+                    <span class="font-medium">
+                        <i class="fas fa-mobile-alt mr-2"></i>3. 요금제 안내
+                    </span>
+                    <span class="{% if submission.check_rate_plan %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                        {% if submission.check_rate_plan %}
+                        <i class="fas fa-check-circle mr-1"></i>정상
+                        {% else %}
+                        <i class="fas fa-times-circle mr-1"></i>비정상
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex justify-between items-center p-3 rounded-lg {% if submission.check_retention %}bg-green-50{% else %}bg-red-50{% endif %}">
+                    <span class="font-medium">
+                        <i class="fas fa-calendar-alt mr-2"></i>4. 유지기간 안내
+                    </span>
+                    <span class="{% if submission.check_retention %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                        {% if submission.check_retention %}
+                        <i class="fas fa-check-circle mr-1"></i>정상
+                        {% else %}
+                        <i class="fas fa-times-circle mr-1"></i>비정상
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex justify-between items-center p-3 rounded-lg {% if submission.check_monthly_fee %}bg-green-50{% else %}bg-red-50{% endif %}">
+                    <span class="font-medium">
+                        <i class="fas fa-won-sign mr-2"></i>5. 요금 안내
+                    </span>
+                    <span class="{% if submission.check_monthly_fee %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                        {% if submission.check_monthly_fee %}
+                        <i class="fas fa-check-circle mr-1"></i>정상
+                        {% else %}
+                        <i class="fas fa-times-circle mr-1"></i>비정상
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="flex justify-between items-center p-3 rounded-lg {% if submission.check_used_phone %}bg-green-50{% else %}bg-red-50{% endif %}">
+                    <span class="font-medium">
+                        <i class="fas fa-recycle mr-2"></i>6. 중고폰 반납 안내
+                    </span>
+                    <span class="{% if submission.check_used_phone %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                        {% if submission.check_used_phone %}
+                        <i class="fas fa-check-circle mr-1"></i>정상
+                        {% else %}
+                        <i class="fas fa-times-circle mr-1"></i>비정상
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        {% if submission.admin_status != '처리완료' %}
+        <form method="POST" action="{{ url_for('resolve_submission', submission_id=submission.id) }}">
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+                <i class="fas fa-check-circle mr-2"></i>처리완료로 변경
+            </button>
+        </form>
+        {% else %}
+        <div class="bg-blue-50 rounded-lg p-4 text-center">
+            <i class="fas fa-check-circle text-blue-500 text-3xl mb-2"></i>
+            <p class="text-blue-700 font-medium">이 건은 이미 처리 완료되었습니다.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
