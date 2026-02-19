@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}로그인 - HappyCall{% endblock %}
+
+{% block content %}
+<div class="flex justify-center items-center min-h-[75vh]">
+    <div class="w-full max-w-md">
+        <div class="glass rounded-2xl shadow-xl shadow-indigo-500/5 p-10">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-indigo-500/30">
+                    <i class="fas fa-headset text-2xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">HappyCall</h1>
+                <p class="text-sm text-gray-500 mt-1">해피콜 감사 시스템에 로그인하세요</p>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2" for="username">아이디</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400 text-sm"></i>
+                        </div>
+                        <input type="text" name="username" id="username" required autofocus
+                            class="w-full pl-11 pr-4 py-3 bg-surface-50 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all"
+                            placeholder="아이디를 입력하세요">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2" for="password">비밀번호</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400 text-sm"></i>
+                        </div>
+                        <input type="password" name="password" id="password" required
+                            class="w-full pl-11 pr-4 py-3 bg-surface-50 border border-surface-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all"
+                            placeholder="비밀번호를 입력하세요">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary w-full text-white font-semibold py-3 px-4 rounded-xl text-sm">
+                    <i class="fas fa-arrow-right-to-bracket mr-2"></i>로그인
+                </button>
+            </form>
+
+            <div class="mt-8 pt-6 border-t border-surface-200">
+                <p class="text-xs text-gray-400 text-center mb-3">테스트 계정</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-surface-50 rounded-lg px-3 py-2.5 text-center">
+                        <span class="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">관리자</span>
+                        <p class="text-xs text-gray-500 mt-1.5 font-mono">1 / 1</p>
+                    </div>
+                    <div class="bg-surface-50 rounded-lg px-3 py-2.5 text-center">
+                        <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">프리랜서</span>
+                        <p class="text-xs text-gray-500 mt-1.5 font-mono">2 / 2</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

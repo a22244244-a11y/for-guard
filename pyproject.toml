@@ -1,11 +1,12 @@
 [project]
-name = "repl-nix-workspace"
+name = "happycall-system"
 version = "0.1.0"
-description = "Add your description here"
-requires-python = ">=3.11"
+description = "해피콜 감사 시스템 - Telecom Happy Call QC Audit System"
+requires-python = ">=3.9"
 dependencies = [
     "flask>=3.1.2",
     "flask-login>=0.6.3",
     "flask-sqlalchemy>=3.1.1",
     "werkzeug>=3.1.5",
+    "python-dotenv>=1.1.0",
 ]

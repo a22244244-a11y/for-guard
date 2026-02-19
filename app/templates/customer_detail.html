@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.name }} - HappyCall{% endblock %}
+
+{% block content %}
+<!-- 뒤로가기 -->
+<a href="{{ url_for('freelancer.freelancer_dashboard') }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 mb-6 transition-colors">
+    <i class="fas fa-arrow-left text-xs"></i>
+    <span>목록으로 돌아가기</span>
+</a>
+
+<!-- 고객 헤더 카드 -->
+<div class="glass rounded-2xl overflow-hidden mb-6">
+    <div class="bg-gradient-to-r from-brand-600 to-purple-600 px-6 py-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold text-lg backdrop-blur-sm">
+                    {{ customer.name[:1] }}
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">{{ customer.name }}</h1>
+                    <p class="text-sm text-white/70">{{ customer.phone }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                {% set status_styles = {
+                    '대기': 'bg-white/20 text-white border border-white/30',
+                    '1차부재': 'bg-orange-500/20 text-orange-200 border border-orange-400/30',
+                    '2차부재': 'bg-orange-500/20 text-orange-200 border border-orange-400/30',
+                    '3차부재': 'bg-red-500/20 text-red-200 border border-red-400/30',
+                    '통화거부': 'bg-red-500/20 text-red-200 border border-red-400/30',
+                    '해피콜완료': 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30'
+                } %}
+                <span class="{{ status_styles.get(customer.call_status, 'bg-white/20 text-white border border-white/30') }} px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm">
+                    {{ customer.call_status }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {% if not submission %}
+    <!-- 상태 변경 버튼 -->
+    <div class="px-6 py-3 bg-white/50 border-t border-white/20 flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold text-gray-500 mr-2">상태 변경:</span>
+        {% set statuses = ['대기', '1차부재', '2차부재', '3차부재', '통화거부'] %}
+        {% for status in statuses %}
+        <form method="POST" action="{{ url_for('freelancer.update_call_status', customer_id=customer.id) }}" class="inline">
+            <input type="hidden" name="call_status" value="{{ status }}">
+            <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+                {% if customer.call_status == status %}bg-brand-500 text-white shadow-sm{% else %}bg-surface-100 text-gray-500 hover:bg-surface-200{% endif %}">
+                {{ status }}
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% if submission %}
+<!-- 이미 제출된 경우 -->
+<div class="glass rounded-2xl p-6">
+    <div class="flex items-start gap-4 p-5 bg-emerald-50 rounded-xl border border-emerald-100">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-circle-check text-emerald-500"></i>
+        </div>
+        <div>
+            <h3 class="font-semibold text-gray-900 mb-1">제출 완료</h3>
+            <p class="text-sm text-gray-500">{{ submission.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <div class="mt-2">
+                <span class="inline-flex items-center gap-1.5 text-sm font-semibold {% if submission.final_status == '정상' %}text-emerald-600{% else %}text-red-600{% endif %}">
+                    <i class="fas {% if submission.final_status == '정상' %}fa-check-circle{% else %}fa-times-circle{% endif %} text-xs"></i>
+                    최종 결과: {{ submission.final_status }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- 해피콜 프로세스 - 2컬럼 레이아웃 -->
+<form id="happycall-form" method="POST" action="{{ url_for('freelancer.submit_checklist', customer_id=customer.id) }}" enctype="multipart/form-data">
+    <div class="grid lg:grid-cols-12 gap-6">
+        <!-- 좌측: 서류정보 + 스크립트 -->
+        <div class="lg:col-span-7 space-y-6">
+
+            <!-- STEP 1: 서류 정보 확인 -->
+            <div class="glass rounded-2xl p-5">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">1</div>
+                    <h2 class="font-semibold text-gray-900">서류 정보 확인</h2>
+                </div>
+                <div class="bg-surface-50 rounded-xl p-4">
+                    <!-- 데이터 붙여넣기 영역 -->
+                    <div id="paste-area" class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-semibold text-gray-600">고객 개통 데이터 붙여넣기</label>
+                            <button type="button" id="toggle-paste-btn" class="text-[10px] text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1">
+                                <i class="fas fa-paste"></i> 데이터 입력
+                            </button>
+                        </div>
+                        <textarea id="raw-data-input" rows="4" placeholder="담당자가 전달한 개통 데이터를 여기에 붙여넣기 하세요..."
+                            class="hidden w-full px-3 py-2.5 bg-white border border-surface-200 rounded-lg text-xs text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 transition-all resize-y font-mono leading-relaxed"></textarea>
+                        <button type="button" id="parse-data-btn" class="hidden mt-2 w-full bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
+                            <i class="fas fa-wand-magic-sparkles mr-1"></i> 데이터 적용
+                        </button>
+                    </div>
+
+                    <!-- 파싱된 정보 표시 -->
+                    <div id="parsed-info" class="hidden mb-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-semibold text-emerald-600 flex items-center gap-1.5">
+                                <i class="fas fa-circle-check text-[10px]"></i> 데이터 적용 완료
+                            </span>
+                            <button type="button" id="reset-data-btn" class="text-[10px] text-gray-400 hover:text-red-500 font-semibold">
+                                <i class="fas fa-rotate-left mr-0.5"></i> 초기화
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">매장명</span>
+                                <p class="font-medium text-gray-800" id="info-store"></p>
+                            </div>
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">담당자</span>
+                                <p class="font-medium text-gray-800" id="info-agent"></p>
+                            </div>
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">개통단말기</span>
+                                <p class="font-medium text-brand-600" id="info-device"></p>
+                            </div>
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">개통요금제</span>
+                                <p class="font-medium text-brand-600" id="info-plan"></p>
+                            </div>
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">할부원금 / 기간</span>
+                                <p class="font-medium text-gray-800" id="info-installment"></p>
+                            </div>
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">약정기간</span>
+                                <p class="font-medium text-gray-800" id="info-contract"></p>
+                            </div>
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">월 청구예상</span>
+                                <p class="font-medium text-gray-800" id="info-monthly"></p>
+                            </div>
+                            <div class="bg-white rounded-lg px-3 py-2 border border-surface-100">
+                                <span class="text-gray-400 text-[10px]">중고폰 반납</span>
+                                <p class="font-medium text-gray-800" id="info-usedphone"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 기본 고객 정보 -->
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-xs text-gray-400 uppercase tracking-wider">고객명</span>
+                            <p class="font-medium text-gray-800 mt-0.5">{{ customer.name }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-400 uppercase tracking-wider">연락처</span>
+                            <p class="font-medium text-gray-800 mt-0.5">{{ customer.phone }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-400 uppercase tracking-wider">서류상태</span>
+                            <p class="font-medium text-emerald-600 mt-0.5">{{ customer.document_status }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-400 uppercase tracking-wider">접수일</span>
+                            <p class="font-medium text-gray-800 mt-0.5">{{ customer.created_at.strftime('%Y-%m-%d') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: 해피콜 스크립트 (DB에서 로드) -->
+            <div class="glass rounded-2xl p-5">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">2</div>
+                    <h2 class="font-semibold text-gray-900">해피콜 스크립트</h2>
+                </div>
+                <div class="bg-blue-50/50 rounded-xl p-5 border border-blue-100/50">
+                    <div class="text-sm text-gray-700 space-y-4" id="script-content">
+                        {% if script %}
+                        {{ script.content | safe }}
+                        {% else %}
+                        <p class="text-gray-400 italic">등록된 스크립트가 없습니다. 관리자에게 문의하세요.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측: QC 체크리스트 (sticky) -->
+        <div class="lg:col-span-5">
+            <div class="lg:sticky lg:top-24 space-y-4">
+                <!-- 체크리스트 헤더 -->
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="px-5 py-4 border-b border-surface-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white">
+                                <i class="fas fa-clipboard-check text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-900 text-sm">QC 체크리스트</h3>
+                                <p class="text-xs text-gray-400">콜하면서 실시간으로 체크하세요</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 py-4 space-y-3">
+                        <p class="text-xs text-gray-500 flex items-center gap-2 mb-1">
+                            <i class="fas fa-info-circle text-brand-400"></i>
+                            하나라도 비정상이면 전체가 비정상 처리됩니다.
+                        </p>
+
+                        {% set checklist_items = [
+                            ('check_installment', '할부금 안내', 'fa-credit-card'),
+                            ('check_penalty', '위약금 안내', 'fa-triangle-exclamation'),
+                            ('check_rate_plan', '요금제 안내', 'fa-mobile-screen'),
+                            ('check_retention', '유지기간 안내', 'fa-calendar-days'),
+                            ('check_monthly_fee', '요금 안내', 'fa-won-sign'),
+                            ('check_used_phone', '중고폰 반납', 'fa-recycle')
+                        ] %}
+
+                        {% for name, label, icon in checklist_items %}
+                        <div class="p-3 bg-white rounded-xl border border-surface-200 hover:border-brand-200 transition-colors">
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                    <i class="fas {{ icon }} text-brand-400 text-xs w-4 text-center"></i>
+                                    <span class="text-gray-400 font-semibold text-xs">{{ '%02d' % loop.index }}.</span>
+                                    {{ label }}
+                                </span>
+                                <div class="flex gap-1.5">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="{{ name }}" value="normal" class="hidden peer" checked>
+                                        <span class="peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:shadow-md peer-checked:shadow-emerald-500/20 bg-surface-100 text-gray-500 px-3 py-1 rounded-lg text-xs font-semibold transition-all inline-block">
+                                            정상
+                                        </span>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="{{ name }}" value="abnormal" class="hidden peer">
+                                        <span class="peer-checked:bg-red-500 peer-checked:text-white peer-checked:shadow-md peer-checked:shadow-red-500/20 bg-surface-100 text-gray-500 px-3 py-1 rounded-lg text-xs font-semibold transition-all inline-block">
+                                            비정상
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                            <input type="text" name="memo_{{ name }}" placeholder="메모 (선택사항)"
+                                class="mt-2 w-full px-3 py-1.5 bg-surface-50 border border-surface-200 rounded-lg text-xs text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 transition-all">
+                        </div>
+                        {% endfor %}
+
+                        <!-- 07. 매장불만 (메모 제출형) -->
+                        <div class="p-3 bg-white rounded-xl border border-surface-200 hover:border-brand-200 transition-colors">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i class="fas fa-store text-brand-400 text-xs w-4 text-center"></i>
+                                <span class="text-gray-400 font-semibold text-xs">07.</span>
+                                <span class="text-sm font-medium text-gray-700">매장불만</span>
+                                <span class="text-[10px] text-gray-400 bg-surface-100 px-2 py-0.5 rounded-full">메모</span>
+                            </div>
+                            <textarea name="store_complaint_memo" rows="2" placeholder="매장 관련 불만사항을 입력하세요 (없으면 비워두세요)"
+                                class="w-full px-3 py-1.5 bg-surface-50 border border-surface-200 rounded-lg text-xs text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 transition-all resize-none"></textarea>
+                            <!-- 매장불만 정상/비정상 판단을 위한 hidden field (JS에서 설정) -->
+                            <input type="hidden" name="check_store_complaint" id="hidden_check_store_complaint" value="normal">
+                        </div>
+
+                        <!-- 08. 담당자 의견 -->
+                        <div class="p-3 bg-white rounded-xl border border-surface-200">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i class="fas fa-pen-to-square text-brand-400 text-xs w-4 text-center"></i>
+                                <span class="text-gray-400 font-semibold text-xs">08.</span>
+                                <span class="text-sm font-medium text-gray-700">담당자 의견</span>
+                            </div>
+                            <input type="text" name="agent_opinion" placeholder="의견을 한 줄로 입력하세요"
+                                class="w-full px-3 py-1.5 bg-surface-50 border border-surface-200 rounded-lg text-xs text-gray-600 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 녹취 파일 업로드 -->
+                <div class="glass rounded-2xl p-5">
+                    <div class="flex items-center gap-3 mb-3">
+                        <i class="fas fa-microphone text-brand-500 text-sm"></i>
+                        <h3 class="font-semibold text-gray-900 text-sm">녹취 파일 업로드</h3>
+                        <span class="text-[10px] text-red-500 font-semibold bg-red-50 px-2 py-0.5 rounded-full">필수</span>
+                    </div>
+                    <div class="bg-surface-50 rounded-xl p-4 border-2 border-dashed border-surface-200 hover:border-brand-300 transition-colors">
+                        <div class="text-center">
+                            <i class="fas fa-cloud-arrow-up text-2xl text-gray-300 mb-2"></i>
+                            <input type="file" name="recording" accept=".mp3,.wav,.m4a,.ogg" id="recording-input"
+                                class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 file:cursor-pointer file:transition-colors">
+                            <p class="text-xs text-gray-400 mt-2">MP3, WAV, M4A, OGG (최대 16MB)</p>
+                        </div>
+                    </div>
+                    <div id="recording-status" class="hidden mt-2 flex items-center gap-2 text-xs text-emerald-600">
+                        <i class="fas fa-circle-check"></i>
+                        <span>파일 선택 완료</span>
+                    </div>
+                </div>
+
+                <!-- 해피콜 완료 버튼 -->
+                <input type="hidden" name="raw_customer_data" id="hidden_raw_customer_data" value="">
+                <button type="submit" id="submit-happycall-btn" disabled
+                    class="w-full text-white font-semibold py-3.5 rounded-xl text-sm opacity-50 cursor-not-allowed bg-gray-400 transition-all">
+                    <i class="fas fa-phone-flip mr-2"></i>해피콜 완료 (녹취파일 필수)
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ===== 녹취파일 게이트 =====
+    var recordingInput = document.getElementById('recording-input');
+    var submitBtn = document.getElementById('submit-happycall-btn');
+    var recordingStatus = document.getElementById('recording-status');
+
+    recordingInput.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-400');
+            submitBtn.classList.add('btn-primary');
+            submitBtn.innerHTML = '<i class="fas fa-phone-flip mr-2"></i>해피콜 완료';
+            recordingStatus.classList.remove('hidden');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-400');
+            submitBtn.classList.remove('btn-primary');
+            submitBtn.innerHTML = '<i class="fas fa-phone-flip mr-2"></i>해피콜 완료 (녹취파일 필수)';
+            recordingStatus.classList.add('hidden');
+        }
+    });
+
+    // ===== 매장불만 → check_store_complaint 자동 설정 =====
+    var form = document.getElementById('happycall-form');
+    form.addEventListener('submit', function() {
+        var storeMemo = document.querySelector('textarea[name="store_complaint_memo"]').value;
+        document.getElementById('hidden_check_store_complaint').value = storeMemo.trim() ? 'abnormal' : 'normal';
+
+        var rawInput = document.getElementById('raw-data-input');
+        if (rawInput) document.getElementById('hidden_raw_customer_data').value = rawInput.value;
+    });
+
+    // ===== 데이터 붙여넣기 파싱 로직 =====
+    var toggleBtn = document.getElementById('toggle-paste-btn');
+    var rawInput = document.getElementById('raw-data-input');
+    var parseBtn = document.getElementById('parse-data-btn');
+    var parsedInfo = document.getElementById('parsed-info');
+    var resetBtn = document.getElementById('reset-data-btn');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            rawInput.classList.toggle('hidden');
+            parseBtn.classList.toggle('hidden');
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            rawInput.value = '';
+            parsedInfo.classList.add('hidden');
+            rawInput.classList.remove('hidden');
+            parseBtn.classList.remove('hidden');
+            // 스크립트 변수 복원
+            var container = document.getElementById('script-content');
+            if (window._originalScriptHTML) container.innerHTML = window._originalScriptHTML;
+        });
+    }
+
+    // 원본 스크립트 HTML 저장
+    var scriptContainer = document.getElementById('script-content');
+    if (scriptContainer) window._originalScriptHTML = scriptContainer.innerHTML;
+
+    if (parseBtn) {
+        parseBtn.addEventListener('click', function() {
+            var raw = rawInput.value;
+            if (!raw.trim()) return;
+
+            var d = parseRawData(raw);
+            fillScriptValues(d);
+            fillInfoPanel(d);
+
+            parsedInfo.classList.remove('hidden');
+            rawInput.classList.add('hidden');
+            parseBtn.classList.add('hidden');
+        });
+    }
+
+    function parseRawData(text) {
+        var data = {};
+        var lines = text.split('\n');
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            var cells = line.split('\t').map(function(c) { return c.trim(); });
+
+            if (cells[0] === '매장명') {
+                data.storeName = cells[1] || '';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '담당자') data.agentName = cells[j+1] || '';
+                    if (cells[j] === '직원연락처') data.agentPhone = cells[j+1] || '';
+                }
+            }
+            if (cells[0] === '개통단말기') data.device = cells[1] || '';
+            if (cells[0] === '할부원금') {
+                data.installmentPrice = cells[1] || '0';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '할부기간') data.installmentMonths = (cells[j+1] || '').replace('개월', '');
+                    if (cells[j] === '할부이자') data.installmentRate = cells[j+1] || '';
+                }
+            }
+            if (cells[0] === '월 청구 할부금') data.monthlyInstallment = cells[1] || '0';
+            if (cells[0] && cells[0].indexOf('약정정보') >= 0) {
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '기간 :' || cells[j] === '기간') data.contractMonths = cells[j+1] || '';
+                }
+            }
+            if (cells[0] === '개통요금제') {
+                data.planName = cells[1] || '';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '청구예상') data.billingAmount = cells[j+1] || '';
+                }
+            }
+            if (cells[0] === '1차변경요금제') {
+                data.plan2Name = cells[1] || '0';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '변경일') data.plan2Date = cells[j+1] || '';
+                    if (cells[j] === '청구예상') data.billingAfter = cells[j+1] || '';
+                }
+            }
+            if (cells[0] === '부가서비스1') data.addon1 = cells[1] || '없음';
+            if (cells[0] === '부가서비스2') data.addon2 = cells[1] || '없음';
+            if (cells[0] === '보험') data.insurance = cells[1] || '없음';
+            if (cells[0] && cells[0].indexOf('부가서비스&보험') >= 0) {
+                var match = cells[0].match(/유지기간\s*(\d+)일/);
+                if (match) data.addonKeepDays = match[1];
+            }
+            if (cells[0] && cells[0].indexOf('개통유지기간') >= 0) {
+                var m1 = cells[0].match(/신규\((\d+)일\)/);
+                var m2 = cells[0].match(/기기변경\/번호이동\((\d+)일\)/);
+                if (m1) data.newKeepDays = m1[1];
+                if (m2) data.changeKeepDays = m2[1];
+            }
+            if (cells[0] === '중고폰반납') {
+                data.usedPhoneReturn = cells[1] || '';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '반납모델') data.usedPhoneModel = cells[j+1] || '';
+                    if (cells[j] === '처리예상금액') data.usedPhoneAmount = cells[j+1] || '';
+                    if (cells[j] === '중고폰 처리방법') data.usedPhoneMethod = cells[j+1] || '';
+                }
+            }
+            if (cells[0] === '▶기존할부금1') {
+                data.oldInstallmentPrice = cells[1] || '0';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '잔여개월') data.oldInstallmentMonths = (cells[j+1] || '').replace('개월', '');
+                    if (cells[j] === '처리방법') data.oldPaymentMethod = cells[j+1] || '';
+                }
+            }
+            if (cells[0] === '▶위약금') {
+                data.oldPenalty = cells[1] || '없음';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '금액') data.oldPenaltyAmount = cells[j+1] || '0';
+                }
+            }
+            if (cells[0] === '결합할인') {
+                data.bundleDiscount = cells[1] || '';
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '할인금액') data.bundleAmount = cells[j+1] || '';
+                }
+            }
+        }
+        return data;
+    }
+
+    function fmt(val) {
+        if (!val || val === '0') return null;
+        var n = parseInt(val.replace(/[^0-9]/g, ''));
+        if (!isNaN(n) && n > 0) return n.toLocaleString() + '원';
+        return val;
+    }
+
+    function fillScriptValues(d) {
+        var container = document.getElementById('script-content');
+        if (!container) return;
+        var html = container.innerHTML;
+
+        var mapping = {
+            '[단말기명]': d.device,
+            '[할부원금]': fmt(d.monthlyInstallment) || fmt(d.installmentPrice),
+            '[할부기간]': d.installmentMonths ? d.installmentMonths + '개월' : null,
+            '[약정기간]': d.contractMonths ? d.contractMonths + '개월' : null,
+            '[요금제명]': d.planName,
+            '[요금제기본료]': fmt(d.billingAmount),
+            '[부가서비스1]': d.addon1 !== '0' ? d.addon1 : null,
+            '[부가서비스2]': d.addon2 !== '0' ? (d.addon2 || d.insurance) : d.insurance,
+            '[요금제유지일수]': d.changeKeepDays ? d.changeKeepDays + '일' : (d.newKeepDays ? d.newKeepDays + '일' : (d.addonKeepDays ? d.addonKeepDays + '일' : null)),
+            '[부가서비스유지일수]': d.addonKeepDays ? d.addonKeepDays + '일' : null,
+            '[청구기간]': d.contractMonths ? d.contractMonths + '개월' : null,
+            '[청구예상금액]': fmt(d.billingAmount),
+            '[변경후청구금액]': fmt(d.billingAfter) || (d.plan2Name !== '0' ? fmt(d.billingAfter) : null),
+            '[기존할부잔여기간]': d.oldInstallmentMonths ? d.oldInstallmentMonths + '개월' : null,
+            '[기존할부금]': fmt(d.oldInstallmentPrice),
+            '[위약금]': d.oldPenalty === '없음' ? '없음' : fmt(d.oldPenaltyAmount),
+            '[처리방법]': d.oldPaymentMethod || d.usedPhoneMethod
+        };
+
+        for (var placeholder in mapping) {
+            var value = mapping[placeholder];
+            if (value) {
+                html = html.split(placeholder).join('<strong class="text-brand-600 bg-brand-100 px-1 rounded">' + value + '</strong>');
+            }
+        }
+
+        container.innerHTML = html;
+    }
+
+    function fillInfoPanel(d) {
+        var el;
+        el = document.getElementById('info-store'); if (el) el.textContent = d.storeName || '-';
+        el = document.getElementById('info-agent'); if (el) el.textContent = (d.agentName || '-') + (d.agentPhone ? ' (' + d.agentPhone + ')' : '');
+        el = document.getElementById('info-device'); if (el) el.textContent = d.device || '-';
+        el = document.getElementById('info-plan'); if (el) el.textContent = d.planName || '-';
+        el = document.getElementById('info-installment'); if (el) el.textContent = (fmt(d.installmentPrice) || '0원') + ' / ' + (d.installmentMonths || '0') + '개월';
+        el = document.getElementById('info-contract'); if (el) el.textContent = d.contractMonths ? d.contractMonths + '개월' : '-';
+        el = document.getElementById('info-monthly'); if (el) el.textContent = fmt(d.billingAmount) || '-';
+        el = document.getElementById('info-usedphone'); if (el) el.textContent = d.usedPhoneReturn === '반납' ? d.usedPhoneModel + ' (' + (fmt(d.usedPhoneAmount) || '') + ')' : (d.usedPhoneReturn || '없음');
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

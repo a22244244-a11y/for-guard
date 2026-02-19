@@ -26,3 +26,6 @@ instance/
 
 # Logs
 *.log
+
+# Replit
+.local/

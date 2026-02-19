@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - HappyCall{% endblock %}
+
+{% block content %}
+<!-- 헤더 -->
+<div class="mb-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 tracking-tight">오늘의 고객</h1>
+            <p class="text-sm text-gray-500 mt-1">해피콜을 진행할 고객을 선택하세요</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-surface-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-sm font-medium text-gray-600">{{ customers|length }}건 할당</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 고객 카드 그리드 -->
+<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    {% for customer in customers %}
+    <div class="glass rounded-2xl card-hover overflow-hidden">
+        <div class="p-5">
+            <!-- 상단: 이름 + 상태 -->
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-brand-500/20">
+                        {{ customer.name[:1] }}
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900">{{ customer.name }}</h3>
+                        <p class="text-xs text-gray-400">{{ customer.phone }}</p>
+                    </div>
+                </div>
+                {% set status_map = {
+                    '대기': ('bg-gray-100 text-gray-600', 'fa-clock'),
+                    '1차부재': ('bg-orange-100 text-orange-700', 'fa-phone-slash'),
+                    '2차부재': ('bg-orange-100 text-orange-700', 'fa-phone-slash'),
+                    '3차부재': ('bg-red-100 text-red-700', 'fa-phone-slash'),
+                    '통화거부': ('bg-red-100 text-red-700', 'fa-ban'),
+                    '해피콜완료': ('status-normal', 'fa-check')
+                } %}
+                {% set sc = status_map.get(customer.call_status, ('bg-gray-100 text-gray-600', 'fa-clock')) %}
+                <span class="{{ sc[0] }} px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1">
+                    <i class="fas {{ sc[1] }} text-[10px]"></i>{{ customer.call_status }}
+                </span>
+            </div>
+
+            <!-- 서류상태 -->
+            <div class="flex items-center gap-2 mb-5 px-3 py-2 bg-surface-50 rounded-lg">
+                <i class="fas fa-file-lines text-brand-400 text-xs"></i>
+                <span class="text-xs text-gray-600">{{ customer.document_status }}</span>
+            </div>
+
+            <!-- 버튼 -->
+            {% if customer.call_status == '해피콜완료' %}
+            <a href="{{ url_for('freelancer.customer_detail', customer_id=customer.id) }}"
+               class="block w-full text-center bg-surface-100 hover:bg-surface-200 text-gray-700 font-semibold py-2.5 rounded-xl text-sm transition-all">
+                <i class="fas fa-eye mr-1.5 text-xs"></i>상세보기
+            </a>
+            {% else %}
+            <a href="{{ url_for('freelancer.customer_detail', customer_id=customer.id) }}"
+               class="btn-primary block w-full text-center text-white font-semibold py-2.5 rounded-xl text-sm">
+                <i class="fas fa-phone-volume mr-1.5 text-xs"></i>해피콜 진행
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not customers %}
+<!-- 빈 상태 -->
+<div class="glass rounded-2xl p-16 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-surface-100 flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-inbox text-2xl text-gray-300"></i>
+    </div>
+    <p class="text-gray-500 font-medium">배정된 고객이 없습니다</p>
+    <p class="text-xs text-gray-400 mt-1">관리자가 고객을 배정하면 여기에 표시됩니다</p>
+</div>
+{% endif %}
+{% endblock %}

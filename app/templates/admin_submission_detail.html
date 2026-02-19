@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}제출 상세 - HappyCall{% endblock %}
+
+{% block content %}
+<!-- 관리자 네비게이션 -->
+<div class="flex flex-wrap gap-2 mb-6">
+    <a href="{{ url_for('admin.admin_dashboard') }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all bg-surface-100 text-gray-500 hover:bg-surface-200">
+        <i class="fas fa-chart-bar text-[10px]"></i>제출 현황
+    </a>
+    <a href="{{ url_for('admin.manage_customers') }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all bg-surface-100 text-gray-500 hover:bg-surface-200">
+        <i class="fas fa-users text-[10px]"></i>고객 관리
+    </a>
+    <a href="{{ url_for('admin.edit_script') }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all bg-surface-100 text-gray-500 hover:bg-surface-200">
+        <i class="fas fa-file-lines text-[10px]"></i>스크립트 편집
+    </a>
+    <a href="{{ url_for('admin.manage_freelancers') }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all bg-surface-100 text-gray-500 hover:bg-surface-200">
+        <i class="fas fa-user-plus text-[10px]"></i>프리랜서 관리
+    </a>
+</div>
+
+<!-- 뒤로가기 -->
+<a href="{{ url_for('admin.admin_dashboard') }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 mb-6 transition-colors">
+    <i class="fas fa-arrow-left text-xs"></i>
+    <span>목록으로 돌아가기</span>
+</a>
+
+<div class="glass rounded-2xl overflow-hidden">
+    <!-- 헤더 -->
+    <div class="bg-gradient-to-r from-brand-600 to-purple-600 px-6 py-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold text-lg backdrop-blur-sm">
+                    {{ submission.customer.name[:1] }}
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">{{ submission.customer.name }}</h1>
+                    <p class="text-sm text-white/70">{{ submission.customer.phone }}</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <span class="{% if submission.final_status == '정상' %}bg-emerald-500/20 text-emerald-200 border border-emerald-400/30{% else %}bg-red-500/20 text-red-200 border border-red-400/30{% endif %} px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm">
+                    {{ submission.final_status }}
+                </span>
+                <span class="{% if submission.admin_status == '처리완료' %}bg-blue-500/20 text-blue-200 border border-blue-400/30{% else %}bg-amber-500/20 text-amber-200 border border-amber-400/30{% endif %} px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm">
+                    {{ submission.admin_status }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6 space-y-6">
+        <!-- 기본 정보 -->
+        <div>
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">기본 정보</h2>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-surface-50 rounded-xl p-4">
+                    <p class="text-xs text-gray-400 mb-1">제출일시</p>
+                    <p class="text-sm font-semibold text-gray-800">{{ submission.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div class="bg-surface-50 rounded-xl p-4">
+                    <p class="text-xs text-gray-400 mb-1">담당자</p>
+                    <p class="text-sm font-semibold text-gray-800">{{ submission.agent.username }}</p>
+                </div>
+                <div class="bg-surface-50 rounded-xl p-4">
+                    <p class="text-xs text-gray-400 mb-1">녹취파일</p>
+                    {% if submission.recording_file %}
+                    <p class="text-sm font-semibold text-brand-600 flex items-center gap-1.5">
+                        <i class="fas fa-file-audio text-xs"></i>
+                        <span class="truncate">{{ submission.recording_file }}</span>
+                    </p>
+                    {% else %}
+                    <p class="text-sm text-gray-400">없음</p>
+                    {% endif %}
+                </div>
+                <div class="bg-surface-50 rounded-xl p-4">
+                    <p class="text-xs text-gray-400 mb-1">최종결과</p>
+                    <p class="text-sm font-bold {% if submission.final_status == '정상' %}text-emerald-600{% else %}text-red-600{% endif %}">
+                        {{ submission.final_status }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- QC 체크리스트 결과 -->
+        <div>
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">QC 체크리스트</h2>
+            <div class="space-y-2">
+                {% set checklist_results = [
+                    (submission.check_installment, '할부금 안내', 'fa-credit-card', submission.memo_check_installment),
+                    (submission.check_penalty, '위약금 안내', 'fa-triangle-exclamation', submission.memo_check_penalty),
+                    (submission.check_rate_plan, '요금제 안내', 'fa-mobile-screen', submission.memo_check_rate_plan),
+                    (submission.check_retention, '유지기간 안내', 'fa-calendar-days', submission.memo_check_retention),
+                    (submission.check_monthly_fee, '요금 안내', 'fa-won-sign', submission.memo_check_monthly_fee),
+                    (submission.check_used_phone, '중고폰 반납', 'fa-recycle', submission.memo_check_used_phone)
+                ] %}
+
+                {% for is_normal, label, icon, memo in checklist_results %}
+                <div class="p-4 rounded-xl {% if is_normal %}bg-emerald-50/50 border border-emerald-100{% else %}bg-red-50/50 border border-red-100{% endif %}">
+                    <div class="flex justify-between items-center">
+                        <span class="flex items-center gap-3 text-sm font-medium text-gray-700">
+                            <i class="fas {{ icon }} text-xs w-4 text-center {% if is_normal %}text-emerald-400{% else %}text-red-400{% endif %}"></i>
+                            <span class="text-gray-400 font-semibold text-xs">{{ '%02d' % loop.index }}.</span>
+                            {{ label }}
+                        </span>
+                        <span class="flex items-center gap-1.5 text-xs font-bold {% if is_normal %}text-emerald-600{% else %}text-red-600{% endif %}">
+                            <i class="fas {% if is_normal %}fa-check-circle{% else %}fa-times-circle{% endif %} text-[11px]"></i>
+                            {{ '정상' if is_normal else '비정상' }}
+                        </span>
+                    </div>
+                    {% if memo %}
+                    <p class="mt-2 text-xs text-gray-500 bg-white/60 rounded-lg px-3 py-1.5">
+                        <i class="fas fa-comment text-gray-300 mr-1"></i>{{ memo }}
+                    </p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <!-- 07. 매장불만 -->
+                <div class="p-4 rounded-xl {% if submission.store_complaint_memo %}bg-red-50/50 border border-red-100{% else %}bg-emerald-50/50 border border-emerald-100{% endif %}">
+                    <div class="flex justify-between items-center">
+                        <span class="flex items-center gap-3 text-sm font-medium text-gray-700">
+                            <i class="fas fa-store text-xs w-4 text-center {% if submission.store_complaint_memo %}text-red-400{% else %}text-emerald-400{% endif %}"></i>
+                            <span class="text-gray-400 font-semibold text-xs">07.</span>
+                            매장불만
+                        </span>
+                        <span class="flex items-center gap-1.5 text-xs font-bold {% if submission.store_complaint_memo %}text-red-600{% else %}text-emerald-600{% endif %}">
+                            <i class="fas {% if submission.store_complaint_memo %}fa-times-circle{% else %}fa-check-circle{% endif %} text-[11px]"></i>
+                            {{ '있음' if submission.store_complaint_memo else '없음' }}
+                        </span>
+                    </div>
+                    {% if submission.store_complaint_memo %}
+                    <p class="mt-2 text-xs text-red-600 bg-white/60 rounded-lg px-3 py-1.5">
+                        <i class="fas fa-comment text-red-300 mr-1"></i>{{ submission.store_complaint_memo }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 담당자 의견 -->
+        <div>
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">담당자 의견</h2>
+            <div class="bg-surface-50 rounded-xl p-4">
+                {% if submission.agent_opinion %}
+                <p class="text-sm text-gray-700 flex items-start gap-2">
+                    <i class="fas fa-pen-to-square text-brand-400 text-xs mt-1"></i>
+                    {{ submission.agent_opinion }}
+                </p>
+                {% else %}
+                <p class="text-sm text-gray-400 italic">의견 없음</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 처리 액션 -->
+        {% if submission.admin_status != '처리완료' %}
+        <form method="POST" action="{{ url_for('admin.resolve_submission', submission_id=submission.id) }}">
+            <button type="submit" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl text-sm">
+                <i class="fas fa-check-circle mr-2"></i>처리완료로 변경
+            </button>
+        </form>
+        {% else %}
+        <div class="flex items-center justify-center gap-3 p-5 bg-brand-50 rounded-xl border border-brand-100">
+            <div class="w-10 h-10 rounded-xl bg-brand-100 flex items-center justify-center">
+                <i class="fas fa-circle-check text-brand-500"></i>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-brand-700">처리 완료</p>
+                <p class="text-xs text-brand-500">이 건은 이미 처리 완료되었습니다</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
